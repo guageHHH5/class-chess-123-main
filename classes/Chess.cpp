@@ -46,11 +46,12 @@ void Chess::FENtoBoard(const std::string &st){
     int y = 7;
     int player = 0;
     char ch;
-    int piecePlayer = isupper(ch) ? 0 : 1;
+    
     Bit* b = PieceForPlayer(player, Rook);
     int i;
     for(i = 0; (unsigned)i < st.length(); i++){
         ch = st.at(i);
+        int piecePlayer = isupper(ch) ? 0 : 1;
         if(y >= 0){
             if(tolower(ch) == 'r'){
                 Place(Rook, x, y, piecePlayer);
