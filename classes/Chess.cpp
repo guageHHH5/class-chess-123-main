@@ -1,5 +1,6 @@
 #include "Chess.h"
-#include <cmath>
+#include <string>
+#include <iostream>
 
 const int AI_PLAYER = 1;
 const int HUMAN_PLAYER = -1;
@@ -31,6 +32,173 @@ Bit* Chess::PieceForPlayer(const int playerNumber, ChessPiece piece)
     return bit;
 }
 
+void Chess::Place(const ChessPiece c, const int x, const int y, const int player){
+    Bit* b = PieceForPlayer(player, c);
+    b->setPosition(_grid[y][x].getPosition());
+    b->setParent(&_grid[y][x]);
+    b->setGameTag(player);
+    _grid[y][x].setBit(b);
+
+}
+
+void Chess::FENtoBoard(const std::string &st){
+    int x = 0;
+    int y = 7;
+    int player = 0;
+    char ch;
+    int piecePlayer = isupper(ch) ? 0 : 1;
+    Bit* b = PieceForPlayer(player, Rook);
+    int i;
+    for(i = 0; (unsigned)i < st.length(); i++){
+        ch = st.at(i);
+        if(y >= 0){
+            if(tolower(ch) == 'r'){
+                Place(Rook, x, y, piecePlayer);
+            } else if(tolower(ch) == 'n'){
+                Place(Knight, x, y, piecePlayer);
+            } else if(tolower(ch) == 'b'){
+                Place(Bishop, x, y, piecePlayer);
+            }else if(tolower(ch) == 'q'){
+                Place(Queen, x, y, piecePlayer);
+            }else if(tolower(ch) == 'k'){
+                Place(King, x, y, piecePlayer);
+            }else if(tolower(ch) == 'p'){
+                Place(Pawn, x, y, piecePlayer);
+            }else if(ch == '1'){
+                x = x + 0;
+            }else if(ch == '2'){
+                x = x + 1;
+            }else if(ch == '3'){
+                x = x + 2;
+            }else if(ch == '4'){ 
+                x = x + 3;
+            }else if(ch == '5'){
+                x = x + 4;
+            }else if(ch == '6'){
+                x = x + 5;
+            }else if(ch == '7'){
+                x = x + 6;
+            }else if(ch == '8'){
+                x = x + 7;
+            }else if(ch == '/'){
+                x = -1;
+                y--;
+            }else if(ch == ' '){
+                y = -1;
+            }
+            x++;
+        }else{
+            break;
+        }
+    }
+    int count = 0;
+    std::string s = "";
+    while((unsigned)i < st.length()){
+        if(count == 0){
+            if(st.at(i) == 'b'){
+                endTurn();
+            }
+            count++;
+            i++;
+        } else if(count == 1){
+            if(st.at(i) == '-'){
+                count++;
+                i++;
+            } else if(st.at(i) == 'k'){
+                bKingCastle = true;
+            }else if(st.at(i) == 'q'){
+                bQueenCastle = true;
+            }else if(st.at(i) == 'K'){
+                wKingCastle = true;
+            }else if(st.at(i) == 'Q'){
+                wQueenCastle = true;
+            }else if(st.at(i) == ' '){
+                count++;
+            }else{
+                std::cout << "Castling Invalid";
+            }
+        } else if(count ==2){
+            if(st.at(i) == ' '){
+                count++;
+                i++;
+            }else if (st.at(i) == '-'){
+                count++;
+                i++;
+            }else if(st.at(i) >= 'a' && st.at(i) <= 'h'){
+                int fileIndex = st.at(i) - 'a';
+                int rankIndex = st.at(i+1) - '1';
+                enPassantT = &_grid[fileIndex][rankIndex];
+                //enPassantT = &_grid[st.at(i) - 'a'][st.at(i+1)];
+                count++;
+                i = i + 2;
+            }else{
+                std::cout << "En Passant Invalid";
+                count++;
+                i++;
+            }
+        } 
+        else if(count == 3){
+            if(st.at(i) == ' '){
+                count++;
+                if(!s.empty()){
+                    bool isNumeric = true;
+                    for (char c : s){
+                        if(!isdigit(static_cast<unsigned char>(c))){
+                            isNumeric = false;
+                            break;
+                        }
+                    }
+                    if(isNumeric){
+                        try{
+                            countHalfMove = stoi(s);
+                        }
+                        catch(...){
+                            countHalfMove = 0;
+                        }
+                    } else {
+                        countHalfMove = 0;
+                    }
+                } else {
+                    countHalfMove = 0;
+                }
+                s.clear();
+            } else {
+                s += st.at(i);
+            }
+        } else if(count == 4){
+            s += st.at(i);
+            if((unsigned)i == st.length()-1){
+                count++;
+                if(!s.empty()){
+                    bool isNumeric = true;
+                    for (char c : s){
+                        if(!isdigit(static_cast<unsigned char>(c))){
+                            isNumeric = false;
+                            break;
+                        }
+                    }
+                    if(isNumeric){
+                        try{
+                            countFullMove = stoi(s);
+                        } catch (...){
+                            countFullMove = 1;
+                        }
+                    }else{
+                        countFullMove = 1;
+                    }
+                    
+                }
+            } else {
+                countFullMove = 1;
+            }
+            s.clear();
+            break;
+        }
+        i++;
+    }
+}
+
+
 void Chess::setUpBoard()
 {
     setNumberOfPlayers(2);
@@ -45,56 +213,22 @@ void Chess::setUpBoard()
         for (int x = 0; x < _gameOptions.rowX; x++) {
             ImVec2 position((float)(pieceSize * x + pieceSize), (float)(pieceSize * (_gameOptions.rowY - y) + pieceSize));
             _grid[y][x].initHolder(position, "boardsquare.png", x, y);
+            _grid[y][x].setGameTag(0);
             piece[0] = bitToPieceNotation(y,x);
             _grid[y][x].setNotation(piece);
         }
     }
     
     
-    wPieces = 0;
-    bPieces = 0;
-    loadFromFEN("RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr");
+    bKingCastle = false;
+    bQueenCastle = false;
+    wKingCastle = false;
+    wQueenCastle = false; 
+    enPassantT = NULL;
+    countHalfMove = 0;
+    countFullMove = 1;
+    FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
-    startGame();
-
-}
-
-void Chess::loadFromFEN(const std::string &fen){
-    static const std::unordered_map<char, ChessPiece> pieceMap = {
-        {'p', Pawn}, {'r', Rook}, {'n', Knight}, {'b', Bishop}, {'q', Queen}, {'k', King}
-    };
-    int positionCount = 0;
-    
-
-    for(char ch : fen){
-        if(ch == ' '){
-            break;
-        }
-        if(ch == ' '){
-            continue;
-        }
-        else if(isdigit(ch)){
-            positionCount += ch - '0';
-        }
-        else{
-            int x = positionCount/8;
-            int y = positionCount%8;
-            bool isWhite = isupper(ch);
-            char lowerChar = tolower(ch);
-            auto piece = pieceMap.find(lowerChar);
-
-            if (piece != pieceMap.end()){
-                Bit* bit = PieceForPlayer(isWhite ? 0: 1, piece->second);
-                bit->setPosition(_grid[x][y].getPosition());
-                bit->setParent(&_grid[x][y]);
-                bit->setGameTag(isWhite ? piece->second : piece->second + 128);
-                _grid[x][y].setGameTag(isWhite ? piece->second : piece->second + 128);
-                _grid[x][y].setBit(bit);
-                (isWhite ? wPieces : bPieces) |=(1ULL << positionCount);
-            }
-            positionCount++;
-        }
-    }
 }
 
 
@@ -102,80 +236,337 @@ void Chess::loadFromFEN(const std::string &fen){
 //
 // about the only thing we need to actually fill out for tic-tac-toe
 //
-bool Chess::actionForEmptyHolder(BitHolder &holder)
+bool Chess::actionForEmptyHolder(BitHolder &holder, ChessPiece p)
 {
-    return false;
+    if(holder.bit()){
+        return false;
+    }
+
+    Bit *bit = PieceForPlayer(getCurrentPlayer()->playerNumber(), p);
+    bit->setPosition(holder.getPosition());
+    bit->setParent(&holder);
+    bit->setGameTag(p);
+    holder.setBit(bit);
+
+    return true;
+}
+
+position Chess::getPosition(BitHolder &BH){
+    for(int y = 0; y < _gameOptions.rowY; y++){
+        for(int x = 0; x < _gameOptions.rowX; x++){
+            if(_grid[y][x].getPosition().x == BH.getPosition().x && _grid[y][x].getPosition().y == BH.getPosition().y){
+                position p;
+                p.x = x;
+                p.y = y;
+                return p;
+            }
+        }
+    }
+    position p;
+    p.x = -1;
+    p.y = -1;
+    return p;
 }
 
 bool Chess::canBitMoveFrom(Bit &bit, BitHolder &src)
 {
-    return true;
+    return bit.getOwner()->playerNumber() == getCurrentPlayer()->playerNumber();
 }
 
 bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
 {
-    int pieceTag = (bit.gameTag() > 128) ? bit.gameTag() - 128 : bit.gameTag();
-    ChessSquare* srcSqu = dynamic_cast<ChessSquare*>(&src);
-    ChessSquare* dstSqu = dynamic_cast<ChessSquare*>(&dst);
-    int x = srcSqu->getColumn();
-    int y = srcSqu->getRow();
-    int total = (8*y)+x;
-    int x2 = dstSqu->getColumn();
-    int y2 = dstSqu->getRow();
-    int total2 = (8*y2)+x2;
-    
-    
-    int p = getCurrentPlayer()->playerNumber();
-    bool isWhite = (bit.gameTag() < 128) ? true : false;
-    uint64_t checkPieces = p == 0 ? wPieces : bPieces;
-    bool playable = (checkPieces & (1ULL << total)) != 0;
+    // chess movement
 
-    if((isWhite && p == 0) || (!isWhite && p == 1)){
-        if (playable){
-            uint64_t result = 0;
-            switch(pieceTag){
-                case Rook:
-                    result = ratt(total, wPieces, bPieces);
-                    break;
-                case Bishop:
-                    result = batt(total, wPieces, bPieces);
-                    break;
-                case Queen:
-                    result = ratt(total, wPieces, bPieces) | batt(total, wPieces, bPieces);
-                    break;
-                case Pawn:
-                    result = patt(total, wPieces, bPieces);
-                    break;
-                case Knight:
-                    result = natt(total, wPieces, bPieces);
-                    break;
-                case King:
-                    result = katt(total, wPieces, bPieces);
-                    break;
-                default:
-                    return false;
+    if(bit.gameTag() == Pawn){
+        int player = bit.getOwner()->playerNumber();
+        if(player == 0){
+            std::cout << src.getColumn() << src.getRow() << dst.getColumn() << dst.getRow() << std::endl;
+            std::cout << (src.getRow() == 1) << (src.getColumn() == dst.getColumn()) << (src.getRow() == dst.getRow() - 2) << dst.empty() << _grid[src.getRow()+1][src.getColumn()].empty() << std::endl;
+
+            // double move implementation
+            if(src.getRow() == 1 && src.getColumn() == dst.getColumn() && src.getRow() == dst.getRow() - 2 && dst.empty() && _grid[src.getRow()+1][src.getColumn()].empty()){
+                return true;
             }
-            return (result & (1ULL << total2)) != 0;
+
+            // capture implementation
+            if((src.getColumn() == dst.getColumn() - 1 || src.getColumn() == dst.getColumn() + 1) && src.getRow() == dst.getRow() - 1 && dst.bit()){
+                return true;
+            }
+
+            // en passant
+            if(enPassantT != NULL && dst.getColumn() == enPassantT->getColumn() && dst.getRow() == enPassantT->getRow() + 1){
+                if(src.getRow() == enPassantT->getRow() && (src.getColumn() == dst.getColumn() - 1 || src.getColumn() == dst.getColumn() + 1)){
+                    return true;
+                }
+            }
+            // pawn push
+            return dst.empty() && src.getColumn() == dst.getColumn() && src.getRow() == dst.getRow() - 1;
         }
+        if(player == 1){
+            // double move implementation
+            if(src.getRow() == 6 && src.getColumn() == dst.getColumn() && src.getRow() == dst.getRow() + 2 && dst.empty() && _grid[src.getRow() - 1][src.getColumn()].empty()){
+                return true;
+            }
+
+            // capture
+            if((src.getColumn() == dst.getColumn() - 1 || src.getColumn() == dst.getColumn() + 1) && src.getRow() == dst.getRow() + 1 && dst.bit()){
+                return true;
+            }
+
+            // en passant
+            if(enPassantT != NULL && dst.getColumn() == enPassantT->getColumn() && dst.getRow() == enPassantT->getRow() - 1){
+                if(src.getRow() == enPassantT->getRow() && (src.getColumn() == dst.getColumn() - 1 || src.getColumn() == dst.getColumn() + 1)){
+                    return true;
+                }
+            }
+
+            // pawn push
+            return dst.empty() && src.getColumn() == dst.getColumn() && src.getRow() == dst.getRow() + 1;
+        }
+        return false;
+    }
+    if(bit.gameTag() == Knight){
+        int NMove[8][2] = {
+            {2, 1},
+            {2, -1},
+            {-2, -1},
+            {-2, -2},
+            {1, 2},
+            {1, -2},
+            {-1, 2},
+            {-1, -2}
+        };
+        for(int i = 0; i < 8; i++){
+            if(src.getColumn() + NMove[i][0] == dst.getColumn() && src.getRow() + NMove[i][1] == dst.getRow()){
+                return true;
+            }
+        }
+        return false;
+    }
+    if(bit.gameTag() == Bishop){
+        int x, y;
+        if(src.getColumn() < dst.getColumn()){
+            x = 1;
+        } else {
+            x = -1;
+        }
+        if(src.getRow() < dst.getRow()){
+            y = 1;
+        } else {
+            y = -1;
+        }
+        int srcColumn = src.getColumn();
+        int srcRow = src.getRow();
+        while(srcRow >= 0 && srcRow < 8){
+            srcColumn = srcColumn + x;
+            srcRow = srcRow + y;
+            if(srcColumn == dst.getColumn() && srcRow == dst.getRow()){
+                return true;
+            }
+            if(_grid[srcRow][srcColumn].bit() != nullptr){
+                return false;
+            }
+        }
+        return false;
+    }
+    if(bit.gameTag() == Rook){
+        if((src.getColumn() == dst.getColumn()) != (src.getRow() == dst.getRow())){
+            int x, y;
+            //same file
+            if(src.getColumn() == dst.getColumn()){
+                if(src.getRow() < dst.getRow()){
+                    y = 1;
+                } else {
+                    y = -1;
+                }
+                int srcRow = src.getRow();
+                while(srcRow >= 0 && srcRow < 8){
+                    srcRow = srcRow + y;
+                    if(srcRow == dst.getRow()){
+                        return true;
+                    }
+                    if(_grid[srcRow][src.getColumn()].bit() != nullptr){
+                        return false;
+                    }
+                }
+                return false;
+            // same rank    
+            } else {
+                if(src.getColumn() < dst.getColumn()){
+                    x = 1;
+                } else {
+                    x = -1;
+                }
+                int srcColumn = src.getColumn();
+                while(srcColumn >= 0 && srcColumn < 8){
+                    srcColumn = srcColumn + x;
+                    if(srcColumn == dst.getColumn()){
+                        return true;
+                    }
+                    if(_grid[src.getRow()][srcColumn].bit() != nullptr){
+                        return false;
+                    }
+                }
+                return false;
+            }
+        }
+        return false;
+    }
+    if(bit.gameTag() == Queen){
+        bool isQueen = false;
+        bit.setGameTag(Bishop);
+        if(canBitMoveFromTo(bit, src, dst)){
+            isQueen = true;
+        }
+        bit.setGameTag(Rook);
+        if(canBitMoveFromTo(bit, src, dst)){
+            isQueen = true;
+        }
+        bit.setGameTag(Queen);
+        return isQueen;
+    }
+    if(bit.gameTag() == King){
+        int KMove[8][2] = {
+            {1, 1},
+            {1, 0},
+            {1, -1},
+            {0, 1},
+            {0, -1},
+            {-1, 1},
+            {-1, 0},
+            {-1, -1}
+        };
+        int i;
+        for(i = 0; i < 8; i++){
+            if(src.getColumn() + KMove[i][0] == dst.getColumn() && src.getRow() + KMove[i][1] == dst.getRow()){
+                return true;
+            }
+        }
+        int getPlayerID = getCurrentPlayer()->playerNumber();
+        if(getPlayerID == 0){
+            // check if king home
+            if(src.getColumn() == 4 && src.getRow() == 0){
+                // check if correct tile was chosen
+                if(dst.getColumn() == 6 && dst.getRow() == 0 && wKingCastle){
+                    // check if rook is present
+                    if(_grid[0][7].bit()->gameTag() == Rook){
+                        return true;
+                    }
+                }
+                // another tile
+                if(dst.getColumn() == 2 && dst.getRow() == 0 && wQueenCastle){
+                    // check if rook is present
+                    if(_grid[0][0].bit()->gameTag() == Rook){
+                        return true;
+                    }
+                }
+            }
+        }
+        if(getPlayerID == 1){
+            // check if king home
+            if(src.getColumn() == 4 && src.getRow() == 7){
+                // check if correct tile was chosen
+                if(dst.getColumn() == 6 && dst.getRow() == 7 && wKingCastle){
+                    // check if rook is present
+                    if(_grid[7][7].bit()->gameTag() == Rook){
+                        return true;
+                    }
+                }
+                // another tile
+                if(dst.getColumn() == 2 && dst.getRow() == 7 && wQueenCastle){
+                    // check if rook is present
+                    if(_grid[7][0].bit()->gameTag() == Rook){
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
     return false;
+ 
 }
 
-void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst) {
-    int pieceTag = (bit.gameTag() > 128) ? bit.gameTag() - 128 : bit.gameTag();
-    ChessSquare* srcSqu = dynamic_cast<ChessSquare*>(&src);
-    ChessSquare* dstSqu = dynamic_cast<ChessSquare*>(&dst);
-    int x = srcSqu->getColumn();
-    int y = srcSqu->getRow();
-    int total = (8*y)+x;
-    int x2 = dstSqu->getColumn();
-    int y2 = dstSqu->getRow();
-    int total2 = (8*y2)+x2;
-
-    updatePieces(wPieces, 0);
-    updatePieces(bPieces, 0);
-
-    endTurn();
+void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst){
+    int getPlayerID = getCurrentPlayer()->playerNumber();
+    if(bit.gameTag() == King){
+        if(getPlayerID == 0){
+            if(src.getColumn() == 4 && src.getRow() == 0){
+                // check if correct tile was chosen
+                if(dst.getColumn() == 6 && dst.getRow() == 0){
+                    // check if rook is present
+                    if(_grid[0][7].bit()->gameTag() == Rook){
+                        actionForEmptyHolder(_grid[0][5], Rook);
+                        _grid[0][7].destroyBit();
+                    }
+                }
+                // another tile
+                if(dst.getColumn() == 2 && dst.getRow() == 0){
+                    // check if rook is present
+                    if(_grid[0][0].bit()->gameTag() == Rook){
+                        actionForEmptyHolder(_grid[0][3], Rook);
+                        _grid[0][0].destroyBit();
+                    }
+                }
+            }
+        }
+        if(getPlayerID == 1){
+            if(src.getColumn() == 4 && src.getRow() == 7){
+                // check if correct tile was chosen
+                if(dst.getColumn() == 6 && dst.getRow() == 7){
+                    // check if rook is present
+                    if(_grid[7][7].bit()->gameTag() == Rook){
+                        actionForEmptyHolder(_grid[7][5], Rook);
+                        _grid[7][7].destroyBit();
+                    }
+                }
+                // another tile
+                if(dst.getColumn() == 2 && dst.getRow() == 7){
+                    // check if rook is present
+                    if(_grid[7][0].bit()->gameTag() == Rook){
+                        actionForEmptyHolder(_grid[7][3], Rook);
+                        _grid[7][0].destroyBit();
+                    }
+                }
+            }
+        }
+    }
+    // promote to queen
+    else if(bit.gameTag() == Pawn){
+        if(getPlayerID == 0){
+            if(src.getColumn() == dst.getColumn() && src.getRow() == dst.getRow() - 2){
+                enPassantT = &dst;
+            } else if(enPassantT != NULL && dst.getColumn() == enPassantT->getColumn() && dst.getRow() == enPassantT->getRow() + 1){
+                if(src.getRow() == enPassantT->getRow() && (src.getColumn() == dst.getColumn() - 1 || src.getColumn() == dst.getColumn() + 1)){
+                    _grid[enPassantT->getRow()][enPassantT->getColumn()].destroyBit();
+                    enPassantT = NULL;
+                }
+            } else {
+                enPassantT = NULL;
+            }
+            if(dst.getRow() == 7){
+                _grid[dst.getRow()][dst.getColumn()].destroyBit();
+                Place(Queen, dst.getColumn(), dst.getRow(), 0);
+            }
+        }
+        if(getPlayerID == 1){
+            if(src.getColumn() == dst.getColumn() && src.getRow() == dst.getRow() + 2){
+                enPassantT = &dst;
+            } else if(enPassantT != NULL && dst.getColumn() == enPassantT->getColumn() && dst.getRow() == enPassantT->getRow() - 1){
+                if(src.getRow() == enPassantT->getRow() && (src.getColumn() == dst.getColumn() - 1 || src.getColumn() == dst.getColumn() + 1)){
+                    _grid[enPassantT->getRow()][enPassantT->getColumn()].destroyBit();
+                    enPassantT = NULL;
+                }
+            } else {
+                enPassantT = NULL;
+            }
+            if(dst.getRow() == 0){
+                _grid[dst.getRow()][dst.getColumn()].destroyBit();
+                Place(Queen, dst.getColumn(), dst.getRow(), 1);
+            }
+        }
+    }
 }
 
 //
@@ -183,244 +574,6 @@ void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst) {
 //
 void Chess::stopGame()
 {
-}
-
-uint64_t Chess::ratt(int sq, uint64_t wPieces, uint64_t bPieces){
-    uint64_t result = 0ULL;
-    uint64_t block = wPieces | bPieces;
-    int rank = sq / 8, file = sq % 8, r, f;
-    int getPiece = _grid[rank][file].gameTag();
-    bool isBlack = (getPiece > 128) ? ((getPiece -= 128), true) : false;
-    uint64_t blockedPieces = isBlack ? wPieces : bPieces;
-
-    //Up movement
-    for(r = rank + 1; r <= 7; r++){
-        if(block & (1ULL << (file + r * 8))){
-            if(blockedPieces & (1ULL << (file + r * 8))){
-                result |= (1ULL << (file + r * 8));
-            }
-            break;
-        }
-        result |= (1ULL << (file + r * 8));
-    }
-
-    //Down movement
-    for(r = rank - 1; r >= 0; r--){
-        if(block & (1ULL << (file + r * 8))){
-            if(blockedPieces & (1ULL << (file + r * 8))){
-                result |= (1ULL << (file + r * 8));
-            }
-            break;
-        }
-        result |= (1ULL << (file + r * 8));
-    }
-
-    //right movement
-    for(f = file + 1; f <= 7; f++){
-        if(block & (1ULL << (f + rank * 8))){
-            if(blockedPieces & (1ULL << (f + rank * 8))){
-                result |= (1ULL << (f + rank * 8));
-            }
-            break;
-        }
-        result |= (1ULL << (f + rank * 8));
-    }
-
-    //left movement
-    for(f = file - 1; f >= 0; f--){
-        if(block & (1ULL << (f + rank * 8))){
-            if(blockedPieces & (1ULL << (f + rank * 8))){
-                result |= (1ULL << (f + rank * 8));
-            }
-            break;
-        }
-        result |= (1ULL << (f + rank * 8));
-    }
-
-    return result;
-}
-
-uint64_t Chess::batt(int sq, uint64_t wPieces, uint64_t bPieces){
-    uint64_t result = 0ULL;
-    uint64_t block = wPieces | bPieces;
-    int rank = sq / 8, file = sq % 8, r, f;
-    int getPiece = _grid[rank][file].gameTag();
-    bool isBlack = (getPiece > 128) ? ((getPiece -= 128), true) : false;
-    uint64_t blockedPieces = isBlack ? wPieces : bPieces;
-
-    //UpRight
-    for(r = rank + 1, f = file + 1; r <= 7 && f <= 7; r++, f++){
-        if(block & (1ULL << (f + r * 8))){
-            if(blockedPieces & (1ULL << (f + r * 8))){
-                result |= (1ULL << (f + r * 8));
-            }
-            break;
-        }
-        result |= (1ULL << (f + r * 8));
-    }
-
-    //DownRight
-    for(r = rank - 1, f = file + 1; r >= 0 && f <= 7; r--, f++){
-        if(block & (1ULL << (f + r * 8))){
-            if(blockedPieces & (1ULL << (f + r * 8))){
-                result |= (1ULL << (f + r * 8));
-            }
-            break;
-        }
-        result |= (1ULL << (f + r * 8));
-    }
-
-    //DownLeft
-    for(r = rank - 1, f = file - 1; r >= 0 && f >= 0; r--, f--){
-        if(block & (1ULL << (f + r * 8))){
-            if(blockedPieces & (1ULL << (f + r * 8))){
-                result |= (1ULL << (f + r * 8));
-            }
-            break;
-        }
-        result |= (1ULL << (f + r * 8));
-    }
-
-    //UpLeft
-    for(r = rank + 1, f = file - 1; r <= 7 && f >= 0; r++, f--){
-        if(block & (1ULL << (f + r * 8))){
-            if(blockedPieces & (1ULL << (f + r * 8))){
-                result |= (1ULL << (f + r * 8));
-            }
-            break;
-        }
-        result |= (1ULL << (f + r * 8));
-    }
-    return result;
-}
-
-//the knight can move two squares in any direction vertically, followed by one square horizontally, or two squares in any direction horizontally, followed by one square vertically.
-uint64_t Chess::natt(int sq, uint64_t wPieces, uint64_t bPieces){
-    uint64_t result = 0ULL;
-    int getPiece = _grid[sq/8][sq%8].gameTag();
-    bool isBlack = (getPiece > 128) ? ((getPiece -= 128), true) : false;
-    uint64_t blockedPieces = isBlack ? wPieces : bPieces;
-
-    //Movement offsets for the Knight Piece
-    int movement[8] = {17, 15, 10, 6, -6, -10, -15, -17};
-
-    for (int move : movement){
-        int target = sq +move;
-
-        if(target < 0 || target > 63){
-            continue;
-        }
-
-        //For Edge Cases
-        int sqY = sq % 8;
-        int targetY = target % 8;
-        if(abs(targetY - sqY) > 2) continue;
-
-        uint64_t targetPosition = 1ULL << target;
-
-        //check if target square is blocked by the same color
-        if(!(blockedPieces & targetPosition)){
-            result |= targetPosition;
-        }
-    }
-
-    return result;
-}
-
-uint64_t Chess::katt(int sq, uint64_t wPieces, uint64_t bPieces){
-    uint64_t result = 0ULL;
-    int x = sq/8;
-    int y = sq%8;
-    int getPiece = _grid[x][y].gameTag();
-    bool isBlack = (getPiece > 128) ? ((getPiece -= 128), true) : false;
-    uint64_t blockedPieces = isBlack ? wPieces : bPieces;
-
-    //Movement offsets for the Knight Piece
-    int movement[8] = {7, 8, 9, -1, 1, -9, -8, -7};
-
-    for(int move : movement){
-        int target = sq + move;
-        if(target < 0 || target > 63){
-            continue;
-        }
-
-        //for edge cases
-        if((y == 0 && (move == -1 || move == -9 || move == 7)) || 
-        (y == 7 && (move == -71 || move == -7 || move == 9))){
-            continue;
-        }
-        uint64_t targetPosition = 1ULL << target;
-        result |= (blockedPieces & targetPosition) ? 0ULL : targetPosition;
-    }
-    return result;
-
-}
-
-uint64_t Chess::patt(int sq, uint64_t wPieces, uint64_t bPieces) {
-    uint64_t result = 0ULL;
-    int rank = sq / 8, file = sq % 8;
-    int whatPiece = _grid[rank][file].gameTag();
-    bool isBlack = (whatPiece > 128) ? true : false;
-    uint64_t block = wPieces | bPieces;
-    uint64_t blockPieces = isBlack ? wPieces : bPieces; 
-
-    if(!isBlack){
-        if(rank == 1 && !(block & (1ULL << (sq + 8))) && !(block & (1ULL << (sq + 16)))) {
-            result |= (1ULL << (sq + 16));
-        }
-        if(_grid[rank+1][file].gameTag() <= 0) {
-            result |= (1ULL << (sq + 8));
-        }
-        if((block & (1ULL << (sq + 7)))) {
-            if(blockPieces & (1ULL << (sq + 7))) { 
-                result |= (1ULL << (sq + 7)); 
-            }
-        }
-        if((block & (1ULL << (sq + 9)))) {
-            if(blockPieces & (1ULL << (sq + 9))) { 
-                result |= (1ULL << (sq + 9)); 
-            }
-        }
-    }
-    if(isBlack){
-        if(rank == 6 && !(block & (1ULL << (sq - 8))) && !(block & (1ULL << (sq - 16)))) {
-            result |= (1ULL << (sq - 16));
-        }
-        if(_grid[rank-1][file].gameTag() <= 0) {
-            result |= (1ULL << (sq - 8));
-        }
-        if((block & (1ULL << (sq - 7)))) {
-            if(blockPieces & (1ULL << (sq - 7))) { 
-                result |= (1ULL << (sq - 7)); 
-            }
-        }
-        if((block & (1ULL << (sq - 9)))) {
-            if(blockPieces & (1ULL << (sq - 9))) { 
-                result |= (1ULL << (sq - 9)); 
-            }
-        }
-    }
-
-
-    return result;
-    
-}
-
-//O = white piece, 1 = black piece
-void Chess::updatePieces(uint64_t& pieces, int check){
-    for(int y = 0; y < 8; ++y){
-        for(int x = 0; x < 8; ++x){
-            int gameTag = _grid[y][x].gameTag();
-            if(check == 0 && gameTag > 0 && gameTag < 128){
-                int bitPos = y * 8 + x;
-                pieces |= (1ULL << bitPos);
-            }
-            else if(check == 1 && gameTag > 128){
-                int bitPos = y * 8 + x;
-                pieces |= (1ULL << bitPos);
-            }
-        }
-    }
 }
 
 Player* Chess::checkForWinner()

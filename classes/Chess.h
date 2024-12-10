@@ -6,6 +6,10 @@
 
 const int pieceSize = 64;
 
+typedef struct {
+    int x;
+    int y;
+} position;
 
 enum ChessPiece {
     NoPiece = 0,
@@ -27,6 +31,8 @@ public:
     ~Chess();
 
     // set up the board
+    void        Place(const ChessPiece c, const int x, const int y, const int player);
+    void        FENtoBoard(const std::string &st);
     void        setUpBoard() override;
 
     Player*     checkForWinner() override;
@@ -34,7 +40,8 @@ public:
     std::string initialStateString() override;
     std::string stateString() override;
     void        setStateString(const std::string &s) override;
-    bool        actionForEmptyHolder(BitHolder& holder) override;
+    bool        actionForEmptyHolder(BitHolder& holder, ChessPiece p);
+    position    getPosition(BitHolder& BH);
     bool        canBitMoveFrom(Bit& bit, BitHolder& src) override;
     bool        canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst) override;
     void        bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst) override;
@@ -47,16 +54,14 @@ public:
 private:
     Bit *       PieceForPlayer(const int playerNumber, ChessPiece piece);
     const char  bitToPieceNotation(int row, int column) const;
-    void        loadFromFEN(const std::string &fen);
-
+    
     ChessSquare      _grid[8][8];
-    uint64_t wPieces;
-    uint64_t bPieces;
-    uint64_t ratt(int sq, uint64_t wPieces, uint64_t bPieces); 
-    uint64_t batt(int sq, uint64_t wPieces, uint64_t bPieces); 
-    uint64_t katt(int sq, uint64_t wPieces, uint64_t bPieces); 
-    uint64_t natt(int sq, uint64_t wPieces, uint64_t bPieces); 
-    uint64_t patt(int sq, uint64_t wPieces, uint64_t bPieces); 
-    void     updatePieces(uint64_t& pieces, int check);
+    bool        bKingCastle;
+    bool        wKingCastle;
+    bool        bQueenCastle;
+    bool        wQueenCastle;
+    BitHolder   *enPassantT;
+    int         countHalfMove;
+    int         countFullMove;
 };
 
