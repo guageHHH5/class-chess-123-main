@@ -52,7 +52,7 @@ public:
 	virtual bool dropBitAtPoint(Bit *bit, const ImVec2 &point);
 
 	// initialize the holder with a position, color, and a sprite
-	virtual void initHolder(const ImVec2 &position, const ImVec4 &color, const char *spriteName);
+	virtual void initHolder(const ImVec2 &position, const ImVec4 &color, const char *spriteName, const int column, const int row);
 
 	// can be overriden by subclasses
 	virtual bool isMouseOver(const ImVec2 &mousePos)
@@ -62,7 +62,7 @@ public:
 
 	int getColumn() { return _column; }
 	int getRow() { return _row; }
-	int getSquareIND() { return _row * 8 + _column;}
+	int getSquareInd() { return _row * 8 + _column;}
 
 protected:
 	Bit *_bit;

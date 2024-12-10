@@ -81,8 +81,10 @@ bool BitHolder::dropBitAtPoint(Bit *bit, const ImVec2 &point)
 	return false;
 }
 
-void BitHolder::initHolder(const ImVec2 &position, const ImVec4 &color, const char *spriteName)
+void BitHolder::initHolder(const ImVec2 &position, const ImVec4 &color, const char *spriteName, const int column, const int row)
 {
+	_column = column;
+	_row = row;
 	setPosition(position.x, position.y);
 	setColor(color.x, color.y, color.z, color.w);
 	setSize(0, 0);

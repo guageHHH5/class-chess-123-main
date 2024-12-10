@@ -5,7 +5,6 @@
 #include "../Application.h"
 #include <cmath>
 
-
 Game::Game()
 {
 	_gameOptions.AIPlayer = false;
@@ -170,6 +169,7 @@ void Game::findDropTarget(ImVec2 &pos)
 					_dropTarget->setHighlighted(false);
 					_dropTarget = nullptr;
 				}
+				//std::cout << holder.canDropBitAtPoint(_dragBit, pos) << canBitMoveFromTo(*_dragBit, *_oldHolder, holder) << std::endl;
 				if (holder.canDropBitAtPoint(_dragBit, pos) && canBitMoveFromTo(*_dragBit, *_oldHolder, holder))
 				{
 					_dropTarget = &holder;
@@ -343,7 +343,7 @@ void Game::mouseMoved(ImVec2 &location, Entity *entity)
 	{
 		// Get the mouse position, and see if we've moved 3 pixels since the mouseDown:
 		ImVec2 pos = location;
-		if (std::fabs(pos.x - _dragStartPos.x) >= 12 || std::fabs(pos.y - _dragStartPos.y) >= 12)
+		if (fabs(pos.x - _dragStartPos.x) >= 12 || fabs(pos.y - _dragStartPos.y) >= 12)
 			_dragMoved = true;
 
 		// Move the _dragBit (without animation -- it's unnecessary and slows down responsiveness):

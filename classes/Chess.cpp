@@ -1,6 +1,5 @@
 #include "Chess.h"
 #include <string>
-#include <iostream>
 
 const int AI_PLAYER = 1;
 const int HUMAN_PLAYER = -1;
@@ -25,76 +24,118 @@ Bit* Chess::PieceForPlayer(const int playerNumber, ChessPiece piece)
     // should possibly be cached from player class?
     const char* pieceName = pieces[piece - 1];
     std::string spritePath = std::string("chess/") + (playerNumber == 0 ? "w_" : "b_") + pieceName;
+
     bit->LoadTextureFromFile(spritePath.c_str());
     bit->setOwner(getPlayerAt(playerNumber));
     bit->setSize(pieceSize, pieceSize);
 
+    //std::cerr << "Created piece: " << pieceName << " for player: " << playerNumber << "\n";
     return bit;
 }
 
 void Chess::Place(const ChessPiece c, const int x, const int y, const int player){
     Bit* b = PieceForPlayer(player, c);
+    if (!b) {
+        std::cerr << "Failed to create piece for player " << player << " at (" << x << ", " << y << ")\n";
+    }      
     b->setPosition(_grid[y][x].getPosition());
     b->setParent(&_grid[y][x]);
-    b->setGameTag(player);
+    b->setGameTag(c);
     _grid[y][x].setBit(b);
-
+    if (!_grid[y][x].bit()) {
+        std::cerr << "Piece not placed on grid at (" << x << ", " << y << ")\n";
+    }
+    std::cerr << "Placing piece type: " << c << " for player: " << player << " at (" << x << ", " << y << ")\n";
 }
 
 void Chess::FENtoBoard(const std::string &st){
     int x = 0;
     int y = 7;
     int player = 0;
-    char ch;
-    
-    Bit* b = PieceForPlayer(player, Rook);
+    char c;
+    Bit* bit = PieceForPlayer(player, Rook);
     int i;
-    for(i = 0; (unsigned)i < st.length(); i++){
-        ch = st.at(i);
-        int piecePlayer = isupper(ch) ? 0 : 1;
+    for(i = 0; i < st.length(); i++){
+        c = st.at(i);
         if(y >= 0){
-            if(tolower(ch) == 'r'){
-                Place(Rook, x, y, piecePlayer);
-            } else if(tolower(ch) == 'n'){
-                Place(Knight, x, y, piecePlayer);
-            } else if(tolower(ch) == 'b'){
-                Place(Bishop, x, y, piecePlayer);
-            }else if(tolower(ch) == 'q'){
-                Place(Queen, x, y, piecePlayer);
-            }else if(tolower(ch) == 'k'){
-                Place(King, x, y, piecePlayer);
-            }else if(tolower(ch) == 'p'){
-                Place(Pawn, x, y, piecePlayer);
-            }else if(ch == '1'){
-                x = x + 0;
-            }else if(ch == '2'){
-                x = x + 1;
-            }else if(ch == '3'){
-                x = x + 2;
-            }else if(ch == '4'){ 
-                x = x + 3;
-            }else if(ch == '5'){
-                x = x + 4;
-            }else if(ch == '6'){
-                x = x + 5;
-            }else if(ch == '7'){
-                x = x + 6;
-            }else if(ch == '8'){
-                x = x + 7;
-            }else if(ch == '/'){
-                x = -1;
-                y--;
-            }else if(ch == ' '){
-                y = -1;
+            switch(c){
+                case 'r':
+                    Place(Rook, x, y, 1);
+                    break;
+                case 'n':
+                    Place(Knight, x, y, 1);
+                    break;
+                case 'b':
+                    Place(Bishop, x, y, 1);
+                    break;
+                case 'q':
+                    Place(Queen, x, y, 1);
+                    break;
+                case 'k':
+                    Place(King, x, y, 1);
+                    break;
+                case 'p':
+                    Place(Pawn, x, y, 1);
+                    break;
+                case 'R':
+                    Place(Rook, x, y, 0);
+                    break;
+                case 'N':
+                    Place(Knight, x, y, 0);
+                    break;
+                case 'B':
+                    Place(Bishop, x, y, 0);
+                    break;
+                case 'Q':
+                    Place(Queen, x, y, 0);
+                    break;
+                case 'K':
+                    Place(King, x, y, 0);
+                    break;
+                case 'P':
+                    Place(Pawn, x, y, 0);
+                    break;
+                case '1':
+                    x = x + 0;
+                    break;
+                case '2':
+                    x = x + 1;
+                    break;
+                case '3':
+                    x = x + 2;
+                    break;
+                case '4':
+                    x = x + 3;
+                    break;
+                case '5':
+                    x = x + 4;
+                    break;
+                case '6':
+                    x = x + 5;
+                    break;
+                case '7':
+                    x = x + 6;
+                    break;
+                case '8':
+                    x = x + 7;
+                    break;
+                case '/':
+                    x = -1;
+                    y--;
+                    break;
+                case ' ':
+                    y = -1;
+                    break;
             }
             x++;
-        }else{
+        }
+        else{
             break;
         }
     }
     int count = 0;
     std::string s = "";
-    while((unsigned)i < st.length()){
+    while(i < st.length()){
         if(count == 0){
             if(st.at(i) == 'b'){
                 endTurn();
@@ -118,82 +159,35 @@ void Chess::FENtoBoard(const std::string &st){
             }else{
                 std::cout << "Castling Invalid";
             }
-        } else if(count ==2){
-            if(st.at(i) == ' '){
+        } else if(count == 2){
+            if (st.at(i) == '-'){
                 count++;
                 i++;
-            }else if (st.at(i) == '-'){
-                count++;
-                i++;
-            }else if(st.at(i) >= 'a' && st.at(i) <= 'h'){
-                int fileIndex = st.at(i) - 'a';
-                int rankIndex = st.at(i+1) - '1';
-                enPassantT = &_grid[fileIndex][rankIndex];
-                //enPassantT = &_grid[st.at(i) - 'a'][st.at(i+1)];
+            }else if(st.at(i) >= 'a' && st.at(i) <= 'g'){
+                enPassantT = &_grid[st.at(i) - 'a'][st.at(i+1)];
                 count++;
                 i = i + 2;
             }else{
                 std::cout << "En Passant Invalid";
-                count++;
-                i++;
             }
         } 
         else if(count == 3){
             if(st.at(i) == ' '){
                 count++;
-                if(!s.empty()){
-                    bool isNumeric = true;
-                    for (char c : s){
-                        if(!isdigit(static_cast<unsigned char>(c))){
-                            isNumeric = false;
-                            break;
-                        }
-                    }
-                    if(isNumeric){
-                        try{
-                            countHalfMove = stoi(s);
-                        }
-                        catch(...){
-                            countHalfMove = 0;
-                        }
-                    } else {
-                        countHalfMove = 0;
-                    }
-                } else {
-                    countHalfMove = 0;
-                }
-                s.clear();
-            } else {
+                countHalfMove = stoi(s);
+                s = "";
+            }
+            else{
                 s += st.at(i);
             }
-        } else if(count == 4){
+        }   
+        else if(count == 4){
             s += st.at(i);
-            if((unsigned)i == st.length()-1){
+            if(i == st.length()-1){
                 count++;
-                if(!s.empty()){
-                    bool isNumeric = true;
-                    for (char c : s){
-                        if(!isdigit(static_cast<unsigned char>(c))){
-                            isNumeric = false;
-                            break;
-                        }
-                    }
-                    if(isNumeric){
-                        try{
-                            countFullMove = stoi(s);
-                        } catch (...){
-                            countFullMove = 1;
-                        }
-                    }else{
-                        countFullMove = 1;
-                    }
-                    
-                }
-            } else {
-                countFullMove = 1;
+                countFullMove = stoi(s);
+                s = "";
             }
-            s.clear();
-            break;
         }
         i++;
     }
@@ -228,6 +222,7 @@ void Chess::setUpBoard()
     enPassantT = NULL;
     countHalfMove = 0;
     countFullMove = 1;
+
     FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
 }
@@ -274,10 +269,17 @@ bool Chess::canBitMoveFrom(Bit &bit, BitHolder &src)
     return bit.getOwner()->playerNumber() == getCurrentPlayer()->playerNumber();
 }
 
+
+
 bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
 {
+    //std::cout << "Validating move for piece type: " << bit.gameTag() << "\n";
+    //std::cout << "Source: (" << src.getColumn() << ", " << src.getRow() << ") Destination: (" << dst.getColumn() << ", " << dst.getRow() << ")\n";
+
+    //return true; // For debugging, temporarily allow all moves
     // chess movement
 
+    
     if(bit.gameTag() == Pawn){
         int player = bit.getOwner()->playerNumber();
         if(player == 0){
@@ -326,6 +328,8 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
         }
         return false;
     }
+    
+
     if(bit.gameTag() == Knight){
         int NMove[8][2] = {
             {2, 1},
@@ -372,9 +376,10 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
     }
     if(bit.gameTag() == Rook){
         if((src.getColumn() == dst.getColumn()) != (src.getRow() == dst.getRow())){
-            int x, y;
+            
             //same file
             if(src.getColumn() == dst.getColumn()){
+                int y;
                 if(src.getRow() < dst.getRow()){
                     y = 1;
                 } else {
@@ -393,6 +398,7 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
                 return false;
             // same rank    
             } else {
+                int x;
                 if(src.getColumn() < dst.getColumn()){
                     x = 1;
                 } else {
@@ -426,6 +432,9 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
         bit.setGameTag(Queen);
         return isQueen;
     }
+    
+
+    
     if(bit.gameTag() == King){
         int KMove[8][2] = {
             {1, 1},
@@ -437,8 +446,7 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
             {-1, 0},
             {-1, -1}
         };
-        int i;
-        for(i = 0; i < 8; i++){
+        for(int i = 0; i < 8; i++){
             if(src.getColumn() + KMove[i][0] == dst.getColumn() && src.getRow() + KMove[i][1] == dst.getRow()){
                 return true;
             }
@@ -467,14 +475,14 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
             // check if king home
             if(src.getColumn() == 4 && src.getRow() == 7){
                 // check if correct tile was chosen
-                if(dst.getColumn() == 6 && dst.getRow() == 7 && wKingCastle){
+                if(dst.getColumn() == 6 && dst.getRow() == 7 && bKingCastle){
                     // check if rook is present
                     if(_grid[7][7].bit()->gameTag() == Rook){
                         return true;
                     }
                 }
                 // another tile
-                if(dst.getColumn() == 2 && dst.getRow() == 7 && wQueenCastle){
+                if(dst.getColumn() == 2 && dst.getRow() == 7 && bQueenCastle){
                     // check if rook is present
                     if(_grid[7][0].bit()->gameTag() == Rook){
                         return true;
@@ -488,6 +496,8 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
     return false;
  
 }
+
+
 
 void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst){
     int getPlayerID = getCurrentPlayer()->playerNumber();
@@ -568,6 +578,7 @@ void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst){
             }
         }
     }
+    endTurn();
 }
 
 //

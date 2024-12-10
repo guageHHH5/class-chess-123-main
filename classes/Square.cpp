@@ -10,5 +10,5 @@ void Square::initHolder(const ImVec2 &position, const char *spriteName, const in
     {
         color = ImVec4(0.5,0.5,0.75,1);
     }
-    BitHolder::initHolder(position, color, spriteName);
+    BitHolder::initHolder(position, color, spriteName, column, row);
 }
