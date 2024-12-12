@@ -1,5 +1,6 @@
 #include "Chess.h"
 #include <string>
+#include "Evaluate.h"
 
 const int AI_PLAYER = 1;
 const int HUMAN_PLAYER = -1;
@@ -581,6 +582,171 @@ void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst){
     endTurn();
 }
 
+int Chess::FLIP(int index){
+    return 63 - index;
+}
+
+void Chess::makeMove(Move& move){
+    //src and dst coords
+    BitHolder& src = _grid[move.srcY][move.srcX];
+    BitHolder& dst = _grid[move.dstY][move.dstX];
+
+    move.capturedPiece = dst.bit();
+
+    dst.setBit(src.bit());
+    dst.bit()->setPosition(dst.getPosition());
+    src.setBit(nullptr);
+
+    if(move.promotionPiece != NoPiece){
+        dst.bit()->setGameTag(move.promotionPiece);
+    }
+    if(move.enPassant){
+        int capturedPawnY = move.dstY + (dst.bit()->getOwner()->playerNumber() == 0 ? -1 : 1);
+        _grid[capturedPawnY][move.dstX].destroyBit();
+    }
+}
+
+void Chess::undoMove(Move& move){
+    BitHolder& src = _grid[move.srcY][move.srcX];
+    BitHolder& dst = _grid[move.dstY][move.dstX];
+
+    src.setBit(dst.bit());
+    src.bit()->setPosition(src.getPosition());
+    dst.setBit(move.capturedPiece);
+
+    if(move.promotionPiece != NoPiece){
+        src.bit()->setGameTag(Pawn);
+    }
+    if(move.enPassant){
+        int capturedPawnY = move.dstY + (dst.bit() ? -1 : 1);
+        _grid[capturedPawnY][move.dstY].setBit(move.capturedPiece);
+    }
+}
+
+std::vector<Move> Chess::generateMoves(){
+    std::vector<Move> moves;
+
+    for (int y = 0; y < 8; ++y){
+        for(int x = 0; x < 8; ++x){
+            BitHolder& src = _grid[y][x];
+            Bit* bit = src.bit();
+
+            if(bit && canBitMoveFrom (*bit, src)){
+                for(int dy = 0; dy < 8; ++dy){
+                    for(int dx = 0; dx < 8; ++dx){
+                        BitHolder& dst = _grid[dy][dx];
+
+                        if(canBitMoveFromTo(*bit, src, dst)){
+                            Move move;
+                            move.srcX = x;
+                            move.srcY = y;
+                            move.dstX = dx;
+                            move.dstY = dy;
+                            move.capturedPiece = dst.bit();
+                            move.promotionPiece = NoPiece;
+                            move.enPassant = (bit->gameTag() == Pawn && enPassantT != nullptr && enPassantT->getPosition().x == dst.getPosition().x && enPassantT->getPosition().y == dst.getPosition().y);
+
+                            if(bit->gameTag() == Pawn && (dy == 0 || dy == 7)){
+                                for(int promoPiece = Queen; promoPiece <= Knight; ++promoPiece){
+                                    move.promotionPiece = static_cast<ChessPiece>(promoPiece);
+                                    moves.push_back(move);
+                                }
+                            } else {
+                                moves.push_back(move);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return moves;
+}
+
+int Chess::evaluateBoard(){
+    static std::map<char, int> pieceValues = {
+        {'P', 100}, {'p', -100},
+        {'N', 300}, {'n', -300},
+        {'B', 330}, {'b', -330},
+        {'R', 500}, {'r', -500},
+        {'Q', 900}, {'q', -900},
+        {'K', 20000}, {'k', -20000}
+    };
+
+    int score = 0;
+    for(int y = 0; y < 8; ++y) {
+        for(int x = 0; x < 8; ++x){
+            char piece = bitToPieceNotation(y, x);
+            score += pieceValues[piece];
+
+            int posIndex = (y*8) + x;
+            switch(piece){
+                case 'P': 
+                    score += pawnTable[posIndex];
+                    break;
+                case 'p':
+                    score -= pawnTable[FLIP(posIndex)];
+                    break;
+                case 'N': 
+                    score += knightTable[posIndex];
+                    break;
+                case 'n':
+                    score -= knightTable[FLIP(posIndex)];
+                    break;
+                case 'B': 
+                    score += bishopTable[posIndex];
+                    break;
+                case 'b':
+                    score -= bishopTable[FLIP(posIndex)];
+                    break;
+                case 'R': 
+                    score += rookTable[posIndex];
+                    break;
+                case 'r':
+                    score -= rookTable[FLIP(posIndex)];
+                    break;
+                case 'Q': 
+                    score += queenTable[posIndex];
+                    break;
+                case 'q':
+                    score -= queenTable[FLIP(posIndex)];
+                    break;
+                case 'K': 
+                    score += kingTable[posIndex];
+                    break;
+                case 'k':
+                    score -= kingTable[FLIP(posIndex)];
+                    break;
+            }
+        }
+    }
+    return score;
+}
+
+int Chess::negamax(int depth, int alpha, int beta, int color){
+    if(depth == 0){
+        return color * evaluateBoard();
+    }
+
+    int maxEval = -1000000;
+    auto moves = generateMoves();
+    for(auto& move : moves){
+        makeMove(move);
+        int eval = -negamax(depth - 1, -beta, -alpha, -color);
+        undoMove(move);
+
+        maxEval = std::max(maxEval, eval);
+        alpha = std::max(alpha, eval);
+
+        if(alpha >= beta){
+            break;
+        }
+    }
+    return maxEval;
+}
+
+
 //
 // free all the memory used by the game on the heap
 //
@@ -669,5 +835,22 @@ void Chess::setStateString(const std::string &s)
 //
 void Chess::updateAI() 
 {
+    int bestVal = -1000000;
+    Move bestMove;
+    int depth = 3;
+
+    auto moves = generateMoves();
+    for (auto& move : moves){
+        makeMove(move);
+        int moveVal = -negamax(depth - 1, -1000000, 1000000, 1);
+        undoMove(move);
+
+        if(moveVal > bestVal){
+            bestVal = moveVal;
+            bestMove = move;
+        }
+    }
+
+    makeMove(bestMove);
 }
 
