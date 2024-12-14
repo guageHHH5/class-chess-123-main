@@ -5,15 +5,21 @@
 ## 🎯 Project Overview
 This repository contains a skeleton implementation of a Chess AI engine written in C++. The project is designed to teach fundamental concepts of game AI, including board representation, move generation, and basic game tree search algorithms. 
 
-For setting up the board, I have written a helper function that can read from FEN notation in order to generate a chess board. The pieces' movements are all made with bitwise operation. The movement function are as follow: 
+The entire chess movement part has been reworked.
 
-patt (for pawn)
-batt (for bishop)
-ratt (for rook)
-natt (for knight)
-katt (for king)
+there's a new function called canBitMoveFromTo(), and most of the moves' legalities are determined within that single function. 
 
-Queen uses a combinatio of rook and bishop's movement.
+the chess pieces' movements are somewhat hardcoded, rook, knight, and king's movements have a specific array assigned to them therefore they can only move within those coordinates. Queen uses a combination of rook and bishop's movement. The BitHolder file was also modified to fit into the need to operate Chess.cpp, adding 2 more variables within the initHolder function: row and column.
+
+If you take a look at the code, you'll find the code very messy. A lot of if/else cases and switch cases with a lot of boolean variables. As I could not think of a better way to implement those legality checks with the time we have this quarter. 
+
+Moving onto the FEN strings, I've used a while loop to loop through the entire FEN string, creating a character variable and compare the characters with the ones in the string. The switch cases are operated based on the FEN string detection. 
+
+En Passant was was challenging since we have to find out if the opponent has made a double push move using the pawns. And check that if the piece will successfully being removed just like a normal capture.
+
+Castling was done with 4 boolean variables. 2 for the King/Queen on black, 2 for the King/Queen on white. They are true for the opening position.
+
+
 
 ### 🎓 Educational Purpose
 This project serves as a teaching tool for computer science students to understand:
