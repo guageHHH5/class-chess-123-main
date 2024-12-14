@@ -21,6 +21,14 @@ enum ChessPiece {
     King = 6
 };
 
+typedef struct{
+    int srcX, srcY;
+    int dstX, dstY;
+    Bit* capturedPiece;
+    ChessPiece promotionPiece;
+    bool enPassant;
+} Move;
+
 //
 // the main game class
 //
@@ -34,6 +42,14 @@ public:
     void        Place(const ChessPiece c, const int x, const int y, const int player);
     void        FENtoBoard(const std::string &st);
     void        setUpBoard() override;
+    void        makeMove(Move& move);
+    void        undoMove(Move& move);
+    std::vector<Move> generateMoves();
+
+    int         negamax(int depth, int alpha, int beta, int color);
+    int         evaluateBoard();
+    int         FLIP(int index);
+
 
     Player*     checkForWinner() override;
     bool        checkForDraw() override;
