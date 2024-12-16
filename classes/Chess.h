@@ -24,8 +24,8 @@ enum ChessPiece {
 typedef struct{
     int srcX, srcY;
     int dstX, dstY;
-    Bit* capturedPiece;
-    ChessPiece promotionPiece;
+    ChessPiece capturedPiece;
+    bool promotionPiece;
     bool enPassant;
 } Move;
 
@@ -42,9 +42,10 @@ public:
     void        Place(const ChessPiece c, const int x, const int y, const int player);
     void        FENtoBoard(const std::string &st);
     void        setUpBoard() override;
+    void        copyBoard();
     void        makeMove(Move& move);
     void        undoMove(Move& move);
-    std::vector<Move> generateMoves();
+    std::vector<Move> generateMoves(int playerID);
 
     int         negamax(int depth, int alpha, int beta, int color);
     int         evaluateBoard();
@@ -60,6 +61,7 @@ public:
     position    getPosition(BitHolder& BH);
     bool        canBitMoveFrom(Bit& bit, BitHolder& src) override;
     bool        canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst) override;
+    bool        canBitMoveFromToTWO(Bit& bit, BitHolder& src, BitHolder& dst); 
     void        bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst) override;
 
     void        stopGame() override;
@@ -70,8 +72,10 @@ public:
 private:
     Bit *       PieceForPlayer(const int playerNumber, ChessPiece piece);
     const char  bitToPieceNotation(int row, int column) const;
+    const char  bitToPieceNotationTWO(int row, int column) const;
     
     ChessSquare      _grid[8][8];
+    ChessSquare      _gridTWO[8][8];
     bool        bKingCastle;
     bool        wKingCastle;
     bool        bQueenCastle;

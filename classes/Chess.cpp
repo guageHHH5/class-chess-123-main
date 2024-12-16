@@ -226,6 +226,7 @@ void Chess::setUpBoard()
 
     FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
+    setAIPlayer(1);
 }
 
 
@@ -336,7 +337,7 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
             {2, 1},
             {2, -1},
             {-2, -1},
-            {-2, -2},
+            {-2, 1},
             {1, 2},
             {1, -2},
             {-1, 2},
@@ -460,14 +461,18 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
                 if(dst.getColumn() == 6 && dst.getRow() == 0 && wKingCastle){
                     // check if rook is present
                     if(_grid[0][7].bit()->gameTag() == Rook){
-                        return true;
+                        if(_grid[0][5].empty() && _grid[0][6].empty()){
+                            return true;
+                        }
                     }
                 }
                 // another tile
                 if(dst.getColumn() == 2 && dst.getRow() == 0 && wQueenCastle){
                     // check if rook is present
                     if(_grid[0][0].bit()->gameTag() == Rook){
-                        return true;
+                        if(_grid[0][1].empty() && _grid[0][2].empty() && _grid[0][3].empty()){
+                            return true;
+                        }
                     }
                 }
             }
@@ -479,14 +484,18 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
                 if(dst.getColumn() == 6 && dst.getRow() == 7 && bKingCastle){
                     // check if rook is present
                     if(_grid[7][7].bit()->gameTag() == Rook){
-                        return true;
+                        if(_grid[7][5].empty() && _grid[7][6].empty()){
+                            return true;
+                        }
                     }
                 }
                 // another tile
                 if(dst.getColumn() == 2 && dst.getRow() == 7 && bQueenCastle){
                     // check if rook is present
                     if(_grid[7][0].bit()->gameTag() == Rook){
-                        return true;
+                        if(_grid[7][1].empty() && _grid[7][2].empty() && _grid[7][3].empty()){
+                            return true;
+                        }
                     }
                 }
             }
@@ -498,6 +507,242 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
  
 }
 
+bool Chess::canBitMoveFromToTWO(Bit& bit, BitHolder& src, BitHolder& dst)
+{
+    //std::cout << "Validating move for piece type: " << bit.gameTag() << "\n";
+    //std::cout << "Source: (" << src.getColumn() << ", " << src.getRow() << ") Destination: (" << dst.getColumn() << ", " << dst.getRow() << ")\n";
+
+    //return true; // For debugging, temporarily allow all moves
+    // chess movement
+
+    
+    if(bit.gameTag() == Pawn){
+        int player = bit.getOwner()->playerNumber();
+        if(player == 0){
+            std::cout << src.getColumn() << src.getRow() << dst.getColumn() << dst.getRow() << std::endl;
+            std::cout << (src.getRow() == 1) << (src.getColumn() == dst.getColumn()) << (src.getRow() == dst.getRow() - 2) << dst.empty() << _grid[src.getRow()+1][src.getColumn()].empty() << std::endl;
+
+            // double move implementation
+            if(src.getRow() == 1 && src.getColumn() == dst.getColumn() && src.getRow() == dst.getRow() - 2 && dst.empty() && _grid[src.getRow()+1][src.getColumn()].empty()){
+                return true;
+            }
+
+            // capture implementation
+            if((src.getColumn() == dst.getColumn() - 1 || src.getColumn() == dst.getColumn() + 1) && src.getRow() == dst.getRow() - 1 && dst.bit()){
+                return true;
+            }
+
+            // en passant
+            if(enPassantT != NULL && dst.getColumn() == enPassantT->getColumn() && dst.getRow() == enPassantT->getRow() + 1){
+                if(src.getRow() == enPassantT->getRow() && (src.getColumn() == dst.getColumn() - 1 || src.getColumn() == dst.getColumn() + 1)){
+                    return true;
+                }
+            }
+            // pawn push
+            return dst.empty() && src.getColumn() == dst.getColumn() && src.getRow() == dst.getRow() - 1;
+        }
+        if(player == 1){
+            // double move implementation
+            if(src.getRow() == 6 && src.getColumn() == dst.getColumn() && src.getRow() == dst.getRow() + 2 && dst.empty() && _grid[src.getRow() - 1][src.getColumn()].empty()){
+                return true;
+            }
+
+            // capture
+            if((src.getColumn() == dst.getColumn() - 1 || src.getColumn() == dst.getColumn() + 1) && src.getRow() == dst.getRow() + 1 && dst.bit()){
+                return true;
+            }
+
+            // en passant
+            if(enPassantT != NULL && dst.getColumn() == enPassantT->getColumn() && dst.getRow() == enPassantT->getRow() - 1){
+                if(src.getRow() == enPassantT->getRow() && (src.getColumn() == dst.getColumn() - 1 || src.getColumn() == dst.getColumn() + 1)){
+                    return true;
+                }
+            }
+
+            // pawn push
+            return dst.empty() && src.getColumn() == dst.getColumn() && src.getRow() == dst.getRow() + 1;
+        }
+        return false;
+    }
+    
+
+    if(bit.gameTag() == Knight){
+        int NMove[8][2] = {
+            {2, 1},
+            {2, -1},
+            {-2, -1},
+            {-2, 1},
+            {1, 2},
+            {1, -2},
+            {-1, 2},
+            {-1, -2}
+        };
+        for(int i = 0; i < 8; i++){
+            if(src.getColumn() + NMove[i][0] == dst.getColumn() && src.getRow() + NMove[i][1] == dst.getRow()){
+                return true;
+            }
+        }
+        return false;
+    }
+    if(bit.gameTag() == Bishop){
+        int x, y;
+        if(src.getColumn() < dst.getColumn()){
+            x = 1;
+        } else {
+            x = -1;
+        }
+        if(src.getRow() < dst.getRow()){
+            y = 1;
+        } else {
+            y = -1;
+        }
+        int srcColumn = src.getColumn();
+        int srcRow = src.getRow();
+        while(srcRow >= 0 && srcRow < 8){
+            srcColumn = srcColumn + x;
+            srcRow = srcRow + y;
+            if(srcColumn == dst.getColumn() && srcRow == dst.getRow()){
+                return true;
+            }
+            if(_gridTWO[srcRow][srcColumn].bit() != nullptr){
+                return false;
+            }
+        }
+        return false;
+    }
+    if(bit.gameTag() == Rook){
+        if((src.getColumn() == dst.getColumn()) != (src.getRow() == dst.getRow())){
+            
+            //same file
+            if(src.getColumn() == dst.getColumn()){
+                int y;
+                if(src.getRow() < dst.getRow()){
+                    y = 1;
+                } else {
+                    y = -1;
+                }
+                int srcRow = src.getRow();
+                while(srcRow >= 0 && srcRow < 8){
+                    srcRow = srcRow + y;
+                    if(srcRow == dst.getRow()){
+                        return true;
+                    }
+                    if(_gridTWO[srcRow][src.getColumn()].bit() != nullptr){
+                        return false;
+                    }
+                }
+                return false;
+            // same rank    
+            } else {
+                int x;
+                if(src.getColumn() < dst.getColumn()){
+                    x = 1;
+                } else {
+                    x = -1;
+                }
+                int srcColumn = src.getColumn();
+                while(srcColumn >= 0 && srcColumn < 8){
+                    srcColumn = srcColumn + x;
+                    if(srcColumn == dst.getColumn()){
+                        return true;
+                    }
+                    if(_gridTWO[src.getRow()][srcColumn].bit() != nullptr){
+                        return false;
+                    }
+                }
+                return false;
+            }
+        }
+        return false;
+    }
+    if(bit.gameTag() == Queen){
+        bool isQueen = false;
+        bit.setGameTag(Bishop);
+        if(canBitMoveFromToTWO(bit, src, dst)){
+            isQueen = true;
+        }
+        bit.setGameTag(Rook);
+        if(canBitMoveFromToTWO(bit, src, dst)){
+            isQueen = true;
+        }
+        bit.setGameTag(Queen);
+        return isQueen;
+    }
+    
+
+    
+    if(bit.gameTag() == King){
+        int KMove[8][2] = {
+            {1, 1},
+            {1, 0},
+            {1, -1},
+            {0, 1},
+            {0, -1},
+            {-1, 1},
+            {-1, 0},
+            {-1, -1}
+        };
+        for(int i = 0; i < 8; i++){
+            if(src.getColumn() + KMove[i][0] == dst.getColumn() && src.getRow() + KMove[i][1] == dst.getRow()){
+                if(dst.bit() && dst.bit()->getOwner()->playerNumber() == bit.getOwner()->playerNumber()){
+                    return false;
+                }
+                return true;
+            }
+        }
+        int getPlayerID = getCurrentPlayer()->playerNumber();
+        if(getPlayerID == 0){
+            // check if king home
+            if(src.getColumn() == 4 && src.getRow() == 0){
+                // check if correct tile was chosen
+                if(dst.getColumn() == 6 && dst.getRow() == 0 && wKingCastle){
+                    // check if rook is present
+                    if(_gridTWO[0][7].bit()->gameTag() == Rook){
+                        if(_gridTWO[0][5].empty() && _gridTWO[0][6].empty()){
+                            return true;
+                        }
+                    }
+                }
+                // another tile
+                if(dst.getColumn() == 2 && dst.getRow() == 0 && wQueenCastle){
+                    // check if rook is present
+                    if(_gridTWO[0][0].bit()->gameTag() == Rook){
+                        if(_gridTWO[0][3].empty() && _gridTWO[0][2].empty() && _gridTWO[0][1].empty()){
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        if(getPlayerID == 1){
+            // check if king home
+            if(src.getColumn() == 4 && src.getRow() == 7){
+                // check if correct tile was chosen
+                if(dst.getColumn() == 6 && dst.getRow() == 7 && bKingCastle){
+                    // check if rook is present
+                    if(_gridTWO[7][7].bit()->gameTag() == Rook){
+                        if(_gridTWO[7][5].empty() && _gridTWO[7][5].empty()){
+                            return true;
+                        }
+                    }
+                }
+                // another tile
+                if(dst.getColumn() == 2 && dst.getRow() == 7 && bQueenCastle){
+                    // check if rook is present
+                    if(_gridTWO[7][0].bit()->gameTag() == Rook){
+                        if(_gridTWO[7][3].empty() && _gridTWO[7][2].empty() && _gridTWO[7][1].empty()){
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+    return false;
+ 
+}
 
 
 void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst){
@@ -588,70 +833,65 @@ int Chess::FLIP(int index){
 
 void Chess::makeMove(Move& move){
     //src and dst coords
-    BitHolder& src = _grid[move.srcY][move.srcX];
-    BitHolder& dst = _grid[move.dstY][move.dstX];
-
-    move.capturedPiece = dst.bit();
-
-    dst.setBit(src.bit());
-    dst.bit()->setPosition(dst.getPosition());
-    src.setBit(nullptr);
-
-    if(move.promotionPiece != NoPiece){
-        dst.bit()->setGameTag(move.promotionPiece);
-    }
-    if(move.enPassant){
-        int capturedPawnY = move.dstY + (dst.bit()->getOwner()->playerNumber() == 0 ? -1 : 1);
-        _grid[capturedPawnY][move.dstX].destroyBit();
-    }
+    ChessSquare src = _gridTWO[move.srcY][move.srcX];
+    ChessSquare dst = _gridTWO[move.dstY][move.dstX];
 }
 
 void Chess::undoMove(Move& move){
-    BitHolder& src = _grid[move.srcY][move.srcX];
-    BitHolder& dst = _grid[move.dstY][move.dstX];
+    BitHolder& src = _gridTWO[move.srcY][move.srcX];
+    BitHolder& dst = _gridTWO[move.dstY][move.dstX];
+}
 
-    src.setBit(dst.bit());
-    src.bit()->setPosition(src.getPosition());
-    dst.setBit(move.capturedPiece);
-
-    if(move.promotionPiece != NoPiece){
-        src.bit()->setGameTag(Pawn);
+void Chess::copyBoard(){
+    char piece[2];
+    piece[1] = 0;
+    for(int y = 0; y < _gameOptions.rowY; y++){
+        for(int x = 0; x < _gameOptions.rowX; x++){
+            ImVec2 position((float)(pieceSize * x + pieceSize), (float)(pieceSize * (_gameOptions.rowY - y)));
+            _gridTWO[y][x].initHolder(position, "boardsquare.png", x, y);
+            _gridTWO[y][x].setGameTag(0);
+            piece[0] = bitToPieceNotation(y, x);
+            _gridTWO[y][x].setNotation(piece);
+        }
     }
-    if(move.enPassant){
-        int capturedPawnY = move.dstY + (dst.bit() ? -1 : 1);
-        _grid[capturedPawnY][move.dstY].setBit(move.capturedPiece);
+    for(int y = 0; y < 8; y++){
+        for(int x = 0; x < 8; x++){
+            if(_grid[y][x].bit()){
+                Bit* bit = PieceForPlayer(_grid[y][x].bit()->getOwner()->playerNumber(),(ChessPiece) _grid[y][x].bit()->gameTag());
+                bit->setPosition(_gridTWO[y][x].getPosition());
+                bit->setParent(&_gridTWO[y][x]);
+                bit->setGameTag(_grid[y][x].bit()->gameTag());
+                bit->setOwner(_grid[y][x].bit()->getOwner());
+                _gridTWO[y][x].setBit(bit);
+            }
+        }
     }
 }
 
-std::vector<Move> Chess::generateMoves(){
+std::vector<Move> Chess::generateMoves(int playerID){
     std::vector<Move> moves;
 
     for (int y = 0; y < 8; ++y){
         for(int x = 0; x < 8; ++x){
-            BitHolder& src = _grid[y][x];
-            Bit* bit = src.bit();
-
-            if(bit && canBitMoveFrom (*bit, src)){
+            Bit* src = _gridTWO[y][x].bit();
+            if(src == nullptr){
+                continue;
+            }
+            if(src->getOwner()->playerNumber() == playerID){
                 for(int dy = 0; dy < 8; ++dy){
                     for(int dx = 0; dx < 8; ++dx){
-                        BitHolder& dst = _grid[dy][dx];
-
-                        if(canBitMoveFromTo(*bit, src, dst)){
-                            Move move;
-                            move.srcX = x;
-                            move.srcY = y;
-                            move.dstX = dx;
-                            move.dstY = dy;
-                            move.capturedPiece = dst.bit();
-                            move.promotionPiece = NoPiece;
-                            move.enPassant = (bit->gameTag() == Pawn && enPassantT != nullptr && enPassantT->getPosition().x == dst.getPosition().x && enPassantT->getPosition().y == dst.getPosition().y);
-
-                            if(bit->gameTag() == Pawn && (dy == 0 || dy == 7)){
-                                for(int promoPiece = Queen; promoPiece <= Knight; ++promoPiece){
-                                    move.promotionPiece = static_cast<ChessPiece>(promoPiece);
-                                    moves.push_back(move);
+                        Bit* dst = _gridTWO[dy][dx].bit();
+                        if(dst == nullptr || dst->getOwner()->playerNumber() != playerID){
+                            if(canBitMoveFromToTWO(*src, _gridTWO[y][x], _gridTWO[dy][dx])){
+                                Move move;
+                                move.srcX = x;
+                                move.srcY = y;
+                                move.dstX = dx;
+                                move.dstY = dy;
+                                if(_gridTWO[dy][dx].bit()){
+                                    move.capturedPiece = (ChessPiece) _gridTWO[dy][dx].bit()->gameTag();
                                 }
-                            } else {
+                                move.capturedPiece = NoPiece;
                                 moves.push_back(move);
                             }
                         }
@@ -725,19 +965,26 @@ int Chess::evaluateBoard(){
 }
 
 int Chess::negamax(int depth, int alpha, int beta, int color){
-    if(depth == 0){
+    if(depth <= 0){
         return color * evaluateBoard();
     }
 
     int maxEval = -1000000;
-    auto moves = generateMoves();
+
+    std::vector<Move> moves;
+    if(color == -1){
+        moves = generateMoves(0);
+    } else {
+        moves = generateMoves(1);
+    }
     for(auto& move : moves){
         makeMove(move);
+        std::cout << evaluateBoard() << std::endl;
         int eval = -negamax(depth - 1, -beta, -alpha, -color);
         undoMove(move);
 
         maxEval = std::max(maxEval, eval);
-        alpha = std::max(alpha, eval);
+        alpha = std::max(alpha, maxEval);
 
         if(alpha >= beta){
             break;
@@ -771,6 +1018,23 @@ bool Chess::checkForDraw()
 // this version is used from the top level board to record moves
 //
 const char Chess::bitToPieceNotation(int row, int column) const {
+    if (row < 0 || row >= 8 || column < 0 || column >= 8) {
+        return '0';
+    }
+
+    const char* wpieces = { "?PNBRQK" };
+    const char* bpieces = { "?pnbrqk" };
+    unsigned char notation = '0';
+    Bit* bit = _grid[row][column].bit();
+    if (bit) {
+        notation = bit->gameTag() < 128 ? wpieces[bit->gameTag()] : bpieces[bit->gameTag() & 127];
+    } else {
+        notation = '0';
+    }
+    return notation;
+}
+
+const char Chess::bitToPieceNotationTWO(int row, int column) const {
     if (row < 0 || row >= 8 || column < 0 || column >= 8) {
         return '0';
     }
@@ -835,11 +1099,12 @@ void Chess::setStateString(const std::string &s)
 //
 void Chess::updateAI() 
 {
+    copyBoard();
     int bestVal = -1000000;
     Move bestMove;
-    int depth = 3;
+    int depth = 2;
 
-    auto moves = generateMoves();
+    std::vector<Move> moves = generateMoves(getCurrentPlayer()->playerNumber());
     for (auto& move : moves){
         makeMove(move);
         int moveVal = -negamax(depth - 1, -1000000, 1000000, 1);
@@ -851,6 +1116,107 @@ void Chess::updateAI()
         }
     }
 
-    makeMove(bestMove);
+    BitHolder& src = _grid[bestMove.srcY][bestMove.srcX];
+    BitHolder& dst = _grid[bestMove.dstY][bestMove.dstX];
+
+    Bit bit = *src.bit();
+    int playerID = 1;
+    bool gamestate = false;
+    if(bit.gameTag() == King){
+        if(playerID == 0){
+            // check if king home
+            if(src.getColumn() == 4 && src.getRow() == 0){
+                // check if correct tile was chosen
+                if(dst.getColumn() == 6 && dst.getRow() == 0){
+                    // check if rook is present
+                    if(_grid[0][7].bit()->gameTag() == Rook){
+                        gamestate = true;
+                        actionForEmptyHolder(_grid[0][5], Rook);
+                        _grid[0][7].destroyBit();
+                    }
+                }
+                    // another tile
+                if(dst.getColumn() == 2 && dst.getRow() == 0){
+                        // check if rook is present
+                    if(_grid[0][0].bit()->gameTag() == Rook){
+                        gamestate = true;
+                        actionForEmptyHolder(_grid[0][3], Rook);
+                        _grid[0][0].destroyBit();   
+                    }
+                }
+            }
+        }
+        
+        
+        if(playerID == 1){
+            // check if king home
+            if(src.getColumn() == 4 && src.getRow() == 7){
+                // check if correct tile was chosen
+                if(dst.getColumn() == 6 && dst.getRow() == 7){
+                    // check if rook is present
+                    if(_grid[7][7].bit()->gameTag() == Rook){
+                        gamestate = true;
+                        actionForEmptyHolder(_grid[7][5], Rook);
+                        _grid[7][7].destroyBit();
+                    }
+                }
+                // another tile
+                if(dst.getColumn() == 2 && dst.getRow() == 7){
+                    // check if rook is present
+                    if(_grid[7][0].bit()->gameTag() == Rook){
+                        gamestate = true;
+                        actionForEmptyHolder(_grid[7][3], Rook);
+                        _grid[7][0].destroyBit();
+                    }
+                }
+            }
+        }
+    } else if(bit.gameTag() == Pawn){
+        if(playerID == 0){
+            if(src.getColumn() == dst.getColumn() && src.getRow() == dst.getRow() - 2){
+                enPassantT = &dst;
+            } else if(enPassantT != NULL && dst.getColumn() == enPassantT->getColumn() && dst.getRow() == enPassantT->getRow() + 1){
+                if(src.getRow() == enPassantT->getRow() && (src.getColumn() == dst.getColumn() - 1 || src.getColumn() == dst.getColumn() + 1)){
+                    gamestate = true;
+                    _grid[enPassantT->getRow()][enPassantT->getColumn()].destroyBit();
+                    enPassantT = NULL;
+                }
+            } 
+            else if(dst.getRow() == 7){
+                gamestate = true;
+                _grid[dst.getRow()][dst.getColumn()].destroyBit();
+                Place(Queen, dst.getColumn(), dst.getRow(), 0);
+            } else {
+                enPassantT = NULL;
+            }
+        }
+        if(playerID == 1){
+            if(src.getColumn() == dst.getColumn() && src.getRow() == dst.getRow() + 2){
+                enPassantT = &dst;
+            } else if(enPassantT != NULL && dst.getColumn() == enPassantT->getColumn() && dst.getRow() == enPassantT->getRow() - 1){
+                if(src.getRow() == enPassantT->getRow() && (src.getColumn() == dst.getColumn() - 1 || src.getColumn() == dst.getColumn() + 1)){
+                    gamestate = true;
+                    _grid[enPassantT->getRow()][enPassantT->getColumn()].destroyBit();
+                    enPassantT = NULL;
+                }
+            } else if(dst.getRow() == 0){
+                gamestate = true;
+                _grid[dst.getRow()][dst.getColumn()].destroyBit();
+                Place(Queen, dst.getColumn(), dst.getRow(), 1);
+            }
+            else{
+                enPassantT = NULL;
+                
+            }
+        }
+    }
+    if(!gamestate){
+        enPassantT = NULL;
+        dst.destroyBit();
+        Place((ChessPiece)bit.gameTag(), dst.getColumn(), dst.getRow(), playerID);
+        src.destroyBit();
+    }
+    endTurn();
+    
 }
 

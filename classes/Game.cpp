@@ -111,6 +111,7 @@ void Game::scanForMouse()
 {
 	if (gameHasAI() && getCurrentPlayer() && getCurrentPlayer()->isAIPlayer())
 	{
+		updateAI();
 		return;
 	}
 #if defined(UCI_INTERFACE)
