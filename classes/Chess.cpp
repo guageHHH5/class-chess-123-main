@@ -969,7 +969,7 @@ int Chess::negamax(int depth, int alpha, int beta, int color){
         return color * evaluateBoard();
     }
 
-    int maxEval = -1000000;
+    int maxEval = -100000;
 
     std::vector<Move> moves;
     if(color == -1){
@@ -1100,15 +1100,17 @@ void Chess::setStateString(const std::string &s)
 void Chess::updateAI() 
 {
     copyBoard();
-    int bestVal = -1000000;
+    int bestVal = -1000;
     Move bestMove;
-    int depth = 2;
+    int depth = 3;
 
     std::vector<Move> moves = generateMoves(getCurrentPlayer()->playerNumber());
     for (auto& move : moves){
         makeMove(move);
-        int moveVal = -negamax(depth - 1, -1000000, 1000000, 1);
+        int moveVal = -negamax(depth - 1, -100000, 100000, -1);
         undoMove(move);
+
+        std::cout << moveVal << move.srcY << move.srcX << move.dstY << move.dstX << std::endl;
 
         if(moveVal > bestVal){
             bestVal = moveVal;
