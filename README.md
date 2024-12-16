@@ -19,6 +19,7 @@ En Passant was was challenging since we have to find out if the opponent has mad
 
 Castling was done with 4 boolean variables. 2 for the King/Queen on black, 2 for the King/Queen on white. They are true for the opening position.
 
+Last but not least, the negamax and alpha beta pruning. I had a slight idea on how to implement the AI at first, but after I wrote the code and began running the application, it'll just crash nonstop. I realized that the AI is using the original grid, which means the application will crash no matter what since it's modifying what we already have on the board. After some redesigning, now all the negamax and its helper functions now use a copy of its grid instead. The AI itself, however, calculates move at a decently slow speed. Are the moves random? I personally do not think so, but they do take a while to come out. This implementation is pretty challenging if I do say so myself.
 
 
 ### 🎓 Educational Purpose
